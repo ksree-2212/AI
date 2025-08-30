@@ -78,8 +78,23 @@ export const useVoice = (): UseVoiceReturn => {
 
   const speak = useCallback((text: string) => {
     if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      speechSynthesis.cancel();
+      
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = getLanguageCode(i18n.language);
+      
+      // Try to use a specific voice for the language
+      const voice = getVoiceForLanguage(i18n.language);
+      if (voice) {
+        utterance.voice = voice;
+      }
+      
+      // Set speech parameters for better clarity
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
       speechSynthesis.speak(utterance);
     }
   }, [i18n.language]);
@@ -97,8 +112,27 @@ export const useVoice = (): UseVoiceReturn => {
 const getLanguageCode = (language: string): string => {
   const languageMap: Record<string, string> = {
     'en': 'en-US',
-    'hi': 'hi-IN',
+    'hi': 'hi-IN', 
     'te': 'te-IN'
   };
   return languageMap[language] || 'en-US';
+};
+
+// Function to get available voices for a language
+const getVoiceForLanguage = (language: string): SpeechSynthesisVoice | null => {
+  if (!('speechSynthesis' in window)) return null;
+  
+  const voices = speechSynthesis.getVoices();
+  const langCode = getLanguageCode(language);
+  
+  // Try to find a voice for the specific language
+  let voice = voices.find(v => v.lang === langCode);
+  
+  // Fallback to language without region code
+  if (!voice) {
+    const baseLang = langCode.split('-')[0];
+    voice = voices.find(v => v.lang.startsWith(baseLang));
+  }
+  
+  return voice || null;
 };

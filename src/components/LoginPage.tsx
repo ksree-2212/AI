@@ -5,27 +5,32 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Sprout, User } from 'lucide-react';
+import { useVoice } from '@/hooks/useVoice';
+import { Sprout, User, Eye, EyeOff } from 'lucide-react';
 
 interface LoginPageProps {
-  onLogin: (token: string) => void;
+  onLogin: (userData: any) => void;
+  onCreateAccount: () => void;
 }
 
-export const LoginPage = ({ onLogin }: LoginPageProps) => {
+export const LoginPage = ({ onLogin, onCreateAccount }: LoginPageProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [token, setToken] = useState('');
+  const { speak } = useVoice();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const defaultToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTY2MjQ0MjMsInN1YiI6ImM3YzM5NDBjLWM0ZTgtNGRiYy1hOWQwLTcyMDAxYTJiOGNkYyJ9.YuCbnnnhsid2A99BBhEtgxFLB21XztYYn_qJnF7GcH0";
-
   const handleLogin = async () => {
-    if (!token.trim()) {
+    if (!email.trim() || !password.trim()) {
+      const message = "Please enter both email and password";
       toast({
         variant: "destructive",
-        title: t('invalid_token'),
-        description: "Please enter your access token"
+        title: "Missing Information",
+        description: message
       });
+      speak(message);
       return;
     }
 
@@ -35,29 +40,35 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
       // Simulate API call for authentication
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // For demo purposes, accept the default token or any non-empty token
-      if (token === defaultToken || token.length > 10) {
+      // For demo purposes, accept any valid email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(email) && password.length >= 6) {
+        const successMessage = t('welcome_back');
         toast({
           title: "Login Successful",
-          description: t('welcome_back')
+          description: successMessage
         });
-        onLogin(token);
+        speak(successMessage);
+        onLogin({ email, password });
       } else {
-        throw new Error('Invalid token');
+        throw new Error('Invalid credentials');
       }
     } catch (error) {
+      const errorMessage = "Please check your credentials and try again";
       toast({
         variant: "destructive",
-        title: t('invalid_token'),
-        description: "Please check your access token and try again"
+        title: "Login Failed",
+        description: errorMessage
       });
+      speak(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const useDefaultToken = () => {
-    setToken(defaultToken);
+  const useDemoAccount = () => {
+    setEmail('farmer@demo.com');
+    setPassword('farmer123');
   };
 
   return (
@@ -74,15 +85,38 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
         
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="token">{t('enter_token')}</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="token"
-              type="password"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="Enter your access token..."
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email..."
               className="h-12"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password..."
+                className="h-12 pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-12 w-12"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
 
           <Button
@@ -104,14 +138,15 @@ export const LoginPage = ({ onLogin }: LoginPageProps) => {
 
           <Button
             variant="outline"
-            onClick={useDefaultToken}
+            onClick={useDemoAccount}
             className="w-full h-12"
           >
-            Use Demo Token
+            Use Demo Account
           </Button>
 
           <Button
             variant="ghost"
+            onClick={onCreateAccount}
             className="w-full"
           >
             <User className="mr-2 h-4 w-4" />

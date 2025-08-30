@@ -53,15 +53,54 @@ export const SoilHealthPage = ({ onBack }: SoilHealthPageProps) => {
     }
   }, [transcript, isListening, activeVoiceField, speak, t]);
 
-  const getSoilHealthStatus = (ph: number): { status: string; color: string; score: number } => {
+  const getSoilHealthStatus = (ph: number, nitrogen: number, phosphorus: number, potassium: number, moisture: number): { status: string; color: string; score: number } => {
+    // Calculate overall score based on all parameters
+    let score = 0;
+    let factors = 0;
+
+    // pH score (6.0-7.5 is optimal)
     if (ph >= 6.0 && ph <= 7.5) {
-      return { status: t('excellent'), color: 'soil-excellent', score: 95 };
-    } else if (ph >= 5.5 && ph < 6.0) {
-      return { status: t('good'), color: 'soil-good', score: 75 };
-    } else if (ph >= 5.0 && ph < 5.5) {
-      return { status: t('fair'), color: 'soil-fair', score: 55 };
+      score += 100;
+    } else if (ph >= 5.5 && ph < 6.0 || ph > 7.5 && ph <= 8.0) {
+      score += 75;
+    } else if (ph >= 5.0 && ph < 5.5 || ph > 8.0 && ph <= 8.5) {
+      score += 50;
     } else {
-      return { status: t('poor'), color: 'soil-poor', score: 30 };
+      score += 25;
+    }
+    factors++;
+
+    // NPK scores (80+ is excellent, 60+ is good, 40+ is fair)
+    [nitrogen, phosphorus, potassium].forEach(nutrient => {
+      if (nutrient >= 80) score += 100;
+      else if (nutrient >= 60) score += 75;
+      else if (nutrient >= 40) score += 50;
+      else score += 25;
+      factors++;
+    });
+
+    // Moisture score (40-70% is optimal)
+    if (moisture >= 40 && moisture <= 70) {
+      score += 100;
+    } else if (moisture >= 30 && moisture < 40 || moisture > 70 && moisture <= 80) {
+      score += 75;
+    } else if (moisture >= 20 && moisture < 30 || moisture > 80 && moisture <= 90) {
+      score += 50;
+    } else {
+      score += 25;
+    }
+    factors++;
+
+    const averageScore = Math.round(score / factors);
+
+    if (averageScore >= 85) {
+      return { status: t('excellent'), color: 'soil-excellent', score: averageScore };
+    } else if (averageScore >= 65) {
+      return { status: t('good'), color: 'soil-good', score: averageScore };
+    } else if (averageScore >= 45) {
+      return { status: t('fair'), color: 'soil-fair', score: averageScore };
+    } else {
+      return { status: t('poor'), color: 'soil-poor', score: averageScore };
     }
   };
 
@@ -95,7 +134,7 @@ export const SoilHealthPage = ({ onBack }: SoilHealthPageProps) => {
     speak("Soil data saved successfully");
   };
 
-  const soilHealth = getSoilHealthStatus(soilData.ph);
+  const soilHealth = getSoilHealthStatus(soilData.ph, soilData.nitrogen, soilData.phosphorus, soilData.potassium, soilData.moisture);
   const nitrogenHealth = getNutrientStatus(soilData.nitrogen, 'npk');
   const phosphorusHealth = getNutrientStatus(soilData.phosphorus, 'npk');
   const potassiumHealth = getNutrientStatus(soilData.potassium, 'npk');
